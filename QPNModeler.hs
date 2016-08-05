@@ -22,41 +22,41 @@ helper = ArrayLit2D . map (map IConst)
 transitionPlus :: Item
 transitionPlus
   = Declare (Par, Array [Int, Int] (Par, Int)) "trans_plus"
-            (Just (ArrayLit2D [[IConst 2, IConst 3, IConst 4, IConst 5]
-                              ,[IConst 6, IConst 2, IConst 5, IConst 5]
-                              ,[IConst 2, IConst 7, IConst 4, IConst 5]
-                              ,[IConst 5, IConst 4, IConst 8, IConst 5]
-                              ,[IConst 5, IConst 5, IConst 5, IConst 9]
-                              ,[IConst 6, IConst 2, IConst 5, IConst 5]
-                              ,[IConst 2, IConst 7, IConst 4, IConst 5]
-                              ,[IConst 5, IConst 4, IConst 8, IConst 5]
-                              ,[IConst 5, IConst 5, IConst 5, IConst 9]]))
+            (Just (helper  [ [2, 3, 4, 5]
+                           , [6, 2, 5, 5]
+                           , [2, 7, 4, 5]
+                           , [5, 4, 8, 5]
+                           , [5, 5, 5, 9]
+                           , [6, 2, 5, 5]
+                           , [2, 7, 4, 5]
+                           , [5, 4, 8, 5]
+                           , [5, 5, 5, 9] ]))
 
 -- Transition function for automaton A_x_+
 transitionComb :: Item
 transitionComb
 --  = Declare (Par, Array [Range (IConst 1) (IConst 11), Range (IConst 1) (IConst 4)] (Par, Int)) "trans_comb"
   = Declare (Par, Array [Int, Int] (Par, Int)) "trans_comb"
-            (Just (ArrayLit2D [[IConst  2, IConst  3, IConst  4, IConst  5]
-                              ,[IConst  7, IConst  6, IConst 11, IConst 13]
-                              ,[IConst  6, IConst  8, IConst  9, IConst 12]
-                              ,[IConst 11, IConst  9, IConst 10, IConst 13]
-                              ,[IConst 13, IConst 12, IConst 13, IConst 13]
-                              ,[IConst  7, IConst 14, IConst 11, IConst 13]
-                              ,[IConst  7, IConst  6, IConst 18, IConst 13]
-                              ,[IConst  6, IConst 15, IConst  9, IConst 12]
-                              ,[IConst 11, IConst 16, IConst 10, IConst 13]
-                              ,[IConst 11, IConst  9, IConst 17, IConst 13]
-                              ,[IConst 20, IConst 12, IConst 13, IConst 13]
-                              ,[IConst 13, IConst 19, IConst 13, IConst 13]
-                              ,[IConst 13, IConst 12, IConst 13, IConst 20]
-                              ,[IConst  7, IConst 14, IConst 11, IConst 13]
-                              ,[IConst  6, IConst 15, IConst  9, IConst 12]
-                              ,[IConst 11, IConst 16, IConst 10, IConst 13]
-                              ,[IConst 11, IConst  9, IConst 17, IConst 13]
-                              ,[IConst 20, IConst 12, IConst 13, IConst 13]
-                              ,[IConst 13, IConst 19, IConst 13, IConst 13]
-                              ,[IConst 13, IConst 12, IConst 13, IConst 20]]))
+            (Just (helper  [ [ 2,  3,  4,  5]
+                           , [ 7,  6, 11, 13]
+                           , [ 6,  8,  9, 12]
+                           , [11,  9, 10, 13]
+                           , [13, 12, 13, 13]
+                           , [ 7, 14, 11, 13]
+                           , [ 7,  6, 18, 13]
+                           , [ 6, 15,  9, 12]
+                           , [11, 16, 10, 13]
+                           , [11,  9, 17, 13]
+                           , [20, 12, 13, 13]
+                           , [13, 19, 13, 13]
+                           , [13, 12, 13, 20]
+                           , [ 7, 14, 11, 13]
+                           , [ 6, 15,  9, 12]
+                           , [11, 16, 10, 13]
+                           , [11,  9, 17, 13]
+                           , [20, 12, 13, 13]
+                           , [13, 19, 13, 13]
+                           , [13, 12, 13, 20] ]))
 
 regularPlus :: Expr -> Item
 regularPlus al = Constraint $ Call (userD "regular")
