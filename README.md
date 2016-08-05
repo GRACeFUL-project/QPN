@@ -2,5 +2,5 @@ Creates a causal loop diagram (CLD) and, given qualitative observations on nodes
 
 ## Contributors
 - Maximilian Algehed
-- Patrik Jaanson
+- Patrik Jansson
 - Klara Marntirosian

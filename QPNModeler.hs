@@ -15,6 +15,9 @@ signToInt Z = 2
 signToInt P = 3
 signToInt Q = 4
 
+helper :: [[Int]] -> Expr
+helper = ArrayLit2D . map (map IConst)
+
 -- Transition function for automaton A_+
 transitionPlus :: Item
 transitionPlus
@@ -34,26 +37,26 @@ transitionComb :: Item
 transitionComb
 --  = Declare (Par, Array [Range (IConst 1) (IConst 11), Range (IConst 1) (IConst 4)] (Par, Int)) "trans_comb"
   = Declare (Par, Array [Int, Int] (Par, Int)) "trans_comb"
-            (Just (ArrayLit2D [[IConst 2 , IConst 3, IConst 4 , IConst 5 ]
-                              ,[IConst 7 , IConst 6, IConst 11 , IConst 13 ]
-                              ,[IConst 6 , IConst 8, IConst 9 , IConst 12 ]
-                              ,[IConst 11 , IConst 9, IConst 10 , IConst 13 ]
-                              ,[IConst 13, IConst 12, IConst 13 , IConst 13 ]
-                              ,[IConst 7 , IConst 14, IConst 11 , IConst 13]
-                              ,[IConst 7 , IConst 6, IConst 18, IConst 13 ]
-                              ,[IConst 6 , IConst 15, IConst 9 , IConst 12 ]
-                              ,[IConst 11, IConst 16, IConst 10 , IConst 13 ]
-                              ,[IConst 11 , IConst 9, IConst 17 , IConst 13]
-                              ,[IConst 20 , IConst 12, IConst 13 , IConst 13]
-                              ,[IConst 13 , IConst 19, IConst 13 , IConst 13]
-                              ,[IConst 13 , IConst 12, IConst 13 , IConst 20]
-                              ,[IConst 7 , IConst 14, IConst 11 , IConst 13]
-                              ,[IConst 6 , IConst 15, IConst 9 , IConst 12]
-                              ,[IConst 11 , IConst 16, IConst 10 , IConst 13]
-                              ,[IConst 11 , IConst 9, IConst 17 , IConst 13]
-                              ,[IConst 20 , IConst 12, IConst 13 , IConst 13]
-                              ,[IConst 13 , IConst 19, IConst 13 , IConst 13]
-                              ,[IConst 13 , IConst 12, IConst 13, IConst 20]]))
+            (Just (ArrayLit2D [[IConst  2, IConst  3, IConst  4, IConst  5]
+                              ,[IConst  7, IConst  6, IConst 11, IConst 13]
+                              ,[IConst  6, IConst  8, IConst  9, IConst 12]
+                              ,[IConst 11, IConst  9, IConst 10, IConst 13]
+                              ,[IConst 13, IConst 12, IConst 13, IConst 13]
+                              ,[IConst  7, IConst 14, IConst 11, IConst 13]
+                              ,[IConst  7, IConst  6, IConst 18, IConst 13]
+                              ,[IConst  6, IConst 15, IConst  9, IConst 12]
+                              ,[IConst 11, IConst 16, IConst 10, IConst 13]
+                              ,[IConst 11, IConst  9, IConst 17, IConst 13]
+                              ,[IConst 20, IConst 12, IConst 13, IConst 13]
+                              ,[IConst 13, IConst 19, IConst 13, IConst 13]
+                              ,[IConst 13, IConst 12, IConst 13, IConst 20]
+                              ,[IConst  7, IConst 14, IConst 11, IConst 13]
+                              ,[IConst  6, IConst 15, IConst  9, IConst 12]
+                              ,[IConst 11, IConst 16, IConst 10, IConst 13]
+                              ,[IConst 11, IConst  9, IConst 17, IConst 13]
+                              ,[IConst 20, IConst 12, IConst 13, IConst 13]
+                              ,[IConst 13, IConst 19, IConst 13, IConst 13]
+                              ,[IConst 13, IConst 12, IConst 13, IConst 20]]))
 
 regularPlus :: Expr -> Item
 regularPlus al = Constraint $ Call (userD "regular")
@@ -85,14 +88,14 @@ mapMaybe = fmap
 
 declareVars :: [(Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)])] -> [Item]
 declareVars [] = []
-declareVars ((z, ms, outs, ins):rs) = 
+declareVars ((z, ms, outs, ins):rs) =
   Declare  (Dec, Int) (varIdent z) (mapMaybe (IConst . signToInt) ms)
   : declareVars rs ++ declarePropVars outs z
 
 -- Declare propagation variables for each edge
 declarePropVars outs z =
   -- A propagation variable on the direction of the edge
-  [Declare (Dec, Range (IConst 0) (IConst 4)) (propIdentD z n) Nothing | (n,_) <- outs] ++ 
+  [Declare (Dec, Range (IConst 0) (IConst 4)) (propIdentD z n) Nothing | (n,_) <- outs] ++
   -- and one to the opposite direction
   [Declare (Dec, Range (IConst 0) (IConst 4)) (propIdentOD z n) Nothing | (n,_) <- outs]
 
@@ -118,16 +121,16 @@ constraint1a1 z outs ins     =
                            [IConst $ signToInt s1, Var $ propIdentD z x]) | (x, s1) <- outs]
 
 constraint1a2 :: Node -> [(Node, Sign)] -> [(Node, Sign)] -> [Item]
-constraint1a2 z [] ins   = 
+constraint1a2 z [] ins   =
   [regularComb $ ArrayLit [IConst $ signToInt Z, IConst $ signToInt s1, Var $ propIdentOD x z]
   | (x, s1) <- ins]
 constraint1a2 z outs ins =
-  [regularComb $ ArrayLit ([Var $ propIdentOD z y | (y,_) <- outs] ++ 
+  [regularComb $ ArrayLit ([Var $ propIdentOD z y | (y,_) <- outs] ++
                            [IConst $ signToInt s1, Var $ propIdentOD x z]) | (x, s1) <- ins]
 
 constraint1b :: Node -> [(Node, Sign)] -> [(Node, Sign)] -> [Item]
 constraint1b z outs ins = [regularPlus $ ArrayLit ([Var $ propIdentOD z x | (x,s) <- outs] ++
-                                                   [Var $ propIdentD x z | (x,s) <- ins] ++ 
+                                                   [Var $ propIdentD x z | (x,s) <- ins] ++
                                                    [Var $ varIdent z]) ]
 
 makePost :: (Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)]) -> [Item]
@@ -136,10 +139,10 @@ makePost (z, Nothing, outs, ins) = constraint1a z outs ins ++ constraint1b z out
 
 makeModel :: [(Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)])] -> MZModel
 makeModel cld@(l:ls) = [includeRegular, Empty] ++
-                       declareVars cld ++ 
-                       [Empty, transitionPlus, Empty, transitionComb, Empty] ++ 
+                       declareVars cld ++
+                       [Empty, transitionPlus, Empty, transitionComb, Empty] ++
                        concatMap makePost cld ++ [Empty, Solve Satisfy]
-                       
+
 iSolveCLD cld = iTestModel $ makeModel (getNodeContexts cld)
 solveCLD cld = do
   putStrLn "Minizinc filepath:"
