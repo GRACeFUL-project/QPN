@@ -2,6 +2,7 @@ module WorkedOutExamples where
 
 import DSL.GraphDSL
 import DSL.SolverExports
+import QPNModeler
 {-
   === Worked out examples
 -}
@@ -112,31 +113,31 @@ vanKouwen4 = do
   Example from Van Kouwen, The Quasta Approach
   p.72, Figure 4.9
 -}
-vanKouwen5 = do
-  a <- mkNode "Loss of species diversity"
-  b <- mkNode "Increased overexploitation of vegetation"
-  c <- mkNode "Regional climate change"
-  d <- mkNode "Migrating agricultural impacts on soils"
-  e <- mkNode "Ecosystem conversion"
-  f <- mkNode "Enhanced greenhouse effect"
-  g <- mkNode "Loss of fertility"
-  h <- mkNode "Fresh water scarcity"
-  i <- mkNode "Terrestrial run-off changes"
-  k <- mkNode "Population growth"
-  l <- mkNode "Expantion of agriculturaly used lands"
-  m <- mkNode "Sinking of groundwater level"
-  n <- mkNode "Soil erosion"
-  o <- mkNode "Migration"
-  p <- mkNode "International indeptedness"
-  q <- mkNode "Impoverishment"
-  r <- mkNode "Intensification of agrigulture"
-  t <- mkNode "Greater regulation by economic policies"
-  u <- mkNode "Women's emansipation"
-  v <- mkNode "Widening international social [...]"
-  w <- mkNode "Globalization of markets"
-  x <- mkNode "Knowledge and technology transfer"
-  y <- mkNode "Combating poverty"
-  z <- mkNode "Increasing international conventions [...]"
+vanKouwen5 = do                                            -- Node enumaration
+  a <- mkNode "Loss of species diversity"                  -- 0
+  b <- mkNode "Increased overexploitation of vegetation"   -- 1
+  c <- mkNode "Regional climate change"                    -- 2
+  d <- mkNode "Migrating agricultural impacts on soils"    -- 3
+  e <- mkNode "Ecosystem conversion"                       -- 4
+  f <- mkNode "Enhanced greenhouse effect"                 -- 5
+  g <- mkNode "Loss of fertility"                          -- 6
+  h <- mkNode "Fresh water scarcity"                       -- 7
+  i <- mkNode "Terrestrial run-off changes"                -- 8
+  k <- mkNode "Population growth"                          -- 9
+  l <- mkNode "Expantion of agriculturaly used lands"      -- 10
+  m <- mkNode "Sinking of groundwater level"               -- 11
+  n <- mkNode "Soil erosion"                               -- 12
+  o <- mkNode "Migration"                                  -- 13
+  p <- mkNode "International indeptedness"                 -- 14
+  q <- mkNode "Impoverishment"                             -- 15
+  r <- mkNode "Intensification of agrigulture"             -- 16
+  t <- mkNode "Greater regulation by economic policies"    -- 17
+  u <- mkNode "Women's emansipation"                       -- 18
+  v <- mkNode "Widening international social [...]"        -- 19
+  w <- mkNode "Globalization of markets"                   -- 20
+  x <- mkNode "Knowledge and technology transfer"          -- 21
+  y <- mkNode "Combating poverty"                          -- 22
+  z <- mkNode "Increasing international conventions [...]" -- 23
   
   
   link b >+> a
