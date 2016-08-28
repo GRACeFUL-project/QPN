@@ -147,4 +147,4 @@ iSolveCLD cld = iTestModel $ makeModel (getNodeContexts cld)
 solveCLD cld = do
   putStrLn "Minizinc filepath:"
   p <- getLine
-  testModel (makeModel (getNodeContexts cld)) p "" "fd" "0"
+  testModel (makeModel (getNodeContexts cld)) p "fd" "0"
