@@ -7,13 +7,15 @@ import Interfaces.MZAST
 import Interfaces.MZinHaskell
 import DSL.SolverExports
 import Data.List
---import Examples
+import WorkedOutExamples
 
 signToInt :: Sign -> Int
 signToInt M = 1
 signToInt Z = 2
 signToInt P = 3
 signToInt Q = 4
+
+signDomain = [1..4]
 
 helper :: [[Int]] -> Expr
 helper = ArrayLit2D . map (map IConst)
@@ -60,20 +62,20 @@ transitionComb
 
 regularPlus :: Expr -> Item
 regularPlus al = Constraint $ Call (userD "regular")
-                   [al, IConst 9, IConst 4, Var "trans_plus", IConst 1,
+                   [al, IConst 9, IConst $ last signDomain, Var "trans_plus", IConst 1,
                     SetLit [IConst 6, IConst 7, IConst 8, IConst 9]]
 
 regularComb :: Expr -> Item
 regularComb al = Constraint $ Call (userD "regular")
-                   [al, IConst 20, IConst 4, Var "trans_comb", IConst 1,
+                   [al, IConst 20, IConst $ last signDomain, Var "trans_comb", IConst 1,
                     SetLit [IConst 14, IConst 15, IConst 16, IConst 17,
                             IConst 18, IConst 19, IConst 20]]
 
 includeRegular :: Item
 includeRegular = Include "regular.mzn"
 
-varIdent :: Node -> Ident
-varIdent z = "V_" ++ show z
+nodeIdent :: Node -> Ident
+nodeIdent z = "V_" ++ show z
 
 -- The actual naming of the propagation variable
 propIdent :: Char -> Node -> Node -> Ident
@@ -89,7 +91,7 @@ mapMaybe = fmap
 declareVars :: [(Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)])] -> [Item]
 declareVars [] = []
 declareVars ((z, ms, outs, ins):rs) =
-  Declare  (Dec, Int) (varIdent z) (mapMaybe (IConst . signToInt) ms)
+  Declare  (Dec, Int) (nodeIdent z) (mapMaybe (IConst . signToInt) ms)
   : declareVars rs ++ declarePropVars outs z
 
 -- Declare propagation variables for each edge
@@ -102,9 +104,9 @@ declarePropVars outs z =
 -- Node z is observed
 constraint2 :: Node -> [(Node, Sign)] -> [(Node, Sign)] -> [Item]
 constraint2 z outs ins =
-  [regularComb $ ArrayLit [Var $ varIdent z, IConst $ signToInt os, Var $ propIdentD z n]
+  [regularComb $ ArrayLit [Var $ nodeIdent z, IConst $ signToInt os, Var $ propIdentD z n]
   | (n, os) <- outs] ++
-  [regularComb $ ArrayLit [Var $ varIdent z, IConst $ signToInt os, Var $ propIdentOD n z]
+  [regularComb $ ArrayLit [Var $ nodeIdent z, IConst $ signToInt os, Var $ propIdentOD n z]
   | (n, os) <- ins]
 
 -- Node z not observed
@@ -131,20 +133,20 @@ constraint1a2 z outs ins =
 constraint1b :: Node -> [(Node, Sign)] -> [(Node, Sign)] -> [Item]
 constraint1b z outs ins = [regularPlus $ ArrayLit ([Var $ propIdentOD z x | (x,s) <- outs] ++
                                                    [Var $ propIdentD x z | (x,s) <- ins] ++
-                                                   [Var $ varIdent z]) ]
+                                                   [Var $ nodeIdent z]) ]
 
 makePost :: (Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)]) -> [Item]
 makePost (z, Just _, outs, ins)  = constraint2  z outs ins
 makePost (z, Nothing, outs, ins) = constraint1a z outs ins ++ constraint1b z outs ins
 
-makeModel :: [(Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)])] -> MZModel
-makeModel cld@(l:ls) = [includeRegular, Empty] ++
+makeSimpleModel :: [(Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)])] -> MZModel
+makeSimpleModel cld@(l:ls) = [includeRegular, Empty] ++
                        declareVars cld ++
                        [Empty, transitionPlus, Empty, transitionComb, Empty] ++
                        concatMap makePost cld ++ [Empty, Solve Satisfy]
 
-iSolveCLD cld = iTestModel $ makeModel (getNodeContexts cld)
+iSolveCLD cld = iTestModel $ makeSimpleModel (getNodeContexts cld)
 solveCLD cld = do
   putStrLn "Minizinc filepath:"
   p <- getLine
-  testModel (makeModel (getNodeContexts cld)) p "fd" "0"
+  testModel (makeSimpleModel (getNodeContexts cld)) p 1 10
