@@ -1,6 +1,7 @@
 module QPNModeler (
   iSolveCLD,
-  solveCLD
+  solveCLD,
+  OW
 ) where
 
 import Interfaces.MZAST
@@ -8,6 +9,35 @@ import Interfaces.MZinHaskell
 import DSL.SolverExports
 import Data.List
 import WorkedOutExamples
+--import Examples
+
+data ConstrainedCLD
+  = ConstrainedCLD { cld     :: [NodeInfo]
+                   , actions :: ([ActionCost], Budget)
+                   , goals   :: [GoalProfit]
+                   , restr   :: [Item]
+                   , obsrv   :: [Obsrv]
+                   }
+         
+type Budget = Maybe Int
+
+type NodeInfo = (Node, [(Node, Sign)], [(Node, Sign)])
+
+type Obsrv = (Node, Sign)
+
+-- Attention!
+-- Code assumes that 'values' has a pair for each possible sign.
+-- See declareWeightArrays.
+data OW = OW { node   :: Node
+             , values :: [(Sign, Int)]
+             }
+
+type ActionCost = OW
+
+type GoalProfit = OW
+
+weight :: OW -> Sign -> Int
+weight o s = head [n | (v, n) <- values o, s == v]
 
 signToInt :: Sign -> Int
 signToInt M = 1
@@ -37,7 +67,6 @@ transitionPlus
 -- Transition function for automaton A_x_+
 transitionComb :: Item
 transitionComb
---  = Declare (Par, Array [Range (IConst 1) (IConst 11), Range (IConst 1) (IConst 4)] (Par, Int)) "trans_comb"
   = Declare (Par, Array [Int, Int] (Par, Int)) "trans_comb"
             (Just (helper  [ [ 2,  3,  4,  5]
                            , [ 7,  6, 11, 13]
@@ -90,24 +119,81 @@ mapMaybe = fmap
 
 declareVars :: [(Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)])] -> [Item]
 declareVars [] = []
-declareVars ((z, ms, outs, ins):rs) =
-  Declare  (Dec, Int) (nodeIdent z) (mapMaybe (IConst . signToInt) ms)
+declareVars ((z, ms, outs, ins):rs)
+  = Declare (Dec, Range (IConst $ head signDomain)
+                        (IConst $ last signDomain))
+            (nodeIdent z)
+            (mapMaybe (IConst . signToInt) ms)
   : declareVars rs ++ declarePropVars outs z
 
 -- Declare propagation variables for each edge
 declarePropVars outs z =
   -- A propagation variable on the direction of the edge
-  [Declare (Dec, Range (IConst 0) (IConst 4)) (propIdentD z n) Nothing | (n,_) <- outs] ++
+  [Declare (Dec, Range (IConst $ head signDomain)
+                       (IConst $ last signDomain))
+           (propIdentD z n)
+           Nothing |
+    (n,_) <- outs] ++
   -- and one to the opposite direction
-  [Declare (Dec, Range (IConst 0) (IConst 4)) (propIdentOD z n) Nothing | (n,_) <- outs]
+  [Declare (Dec, Range (IConst $ head signDomain)
+                       (IConst $ last signDomain))
+           (propIdentOD z n)
+           Nothing |
+    (n,_) <- outs]
+
+-- Declare goal utilities
+obsWeightIdent :: Node -> Ident
+obsWeightIdent n = "V_" ++ show n ++ "Arr"
+
+declareWeightArrays :: [OW] -> [Item]
+declareWeightArrays gs =
+  [Declare (Par, Array [Range (IConst $ head signDomain) 
+                              (IConst $ last signDomain)]
+                       (Par, Int))
+           (obsWeightIdent (node g))
+           (Just (ArrayLit [IConst $ snd p | 
+                             p <- sortOn (signToInt . fst) (values g)])) |
+    g <- gs]
+{-
+declareWeightArrays gs name =
+  Declare (Par, Array [Int, Range (IConst $ head signDomain)
+                                  (IConst $ last signDomain)]
+                      (Par, Int))
+          name
+          (Just (ArrayLit2D [ [IConst $ snd p |
+                                p <- sortOn (signToInt . fst) (values g)] |
+                              g <- gs]))
+-}
+
+-- Utility object function for a 'solve maximize' problem
+utility :: [GoalProfit] -> Item
+utility gs =
+  Solve (Maximize
+           (foldl1' (Bi BPlus)
+           (map (\obs -> ArrayElem (obsWeightIdent $ node obs) [Var $ nodeIdent (node obs)])
+           gs)))
+{-
+utility gs =
+  Solve (Maximize (GenCall 
+                   mz_sum 
+                  ([(["k"], SetLit $ map (IConst . node) gs)], Nothing)
+                  (ArrayElem "Utilities" [Var "k", Var "k"])))
+-}
+-- Budget constraint
+--budget :: Budget -> Item
+
 
 -- Node z is observed
 constraint2 :: Node -> [(Node, Sign)] -> [(Node, Sign)] -> [Item]
 constraint2 z outs ins =
-  [regularComb $ ArrayLit [Var $ nodeIdent z, IConst $ signToInt os, Var $ propIdentD z n]
-  | (n, os) <- outs] ++
-  [regularComb $ ArrayLit [Var $ nodeIdent z, IConst $ signToInt os, Var $ propIdentOD n z]
-  | (n, os) <- ins]
+  [regularComb $ ArrayLit [ Var $ nodeIdent z
+                          , IConst $ signToInt os
+                          , Var $ propIdentD z n] |
+    (n, os) <- outs] ++
+  [regularComb $ ArrayLit [ Var $ nodeIdent z
+                          , IConst $ signToInt os
+                          , Var $ propIdentOD n z] |
+    (n, os) <- ins]
 
 -- Node z not observed
 constraint1a :: Node -> [(Node, Sign)] -> [(Node, Sign)] -> [Item]
@@ -116,29 +202,49 @@ constraint1a z outs ins = constraint1a1 z outs ins ++
 
 constraint1a1 :: Node -> [(Node, Sign)] -> [(Node, Sign)] -> [Item]
 constraint1a1 z [(x, s1)] [] =
-  [regularComb $ ArrayLit [IConst $ signToInt Z, IConst $ signToInt s1, Var $ propIdentD z x]]
+  [regularComb $ ArrayLit [ IConst $ signToInt Z
+                          , IConst $ signToInt s1
+                          , Var $ propIdentD z x]]
 constraint1a1 z outs ins     =
-  [regularComb $ ArrayLit ([Var $ propIdentOD z y | (y, _) <- delete (x, s1) outs] ++
-                           [Var $ propIdentD y z | (y,_) <- filter (((/=) x). fst) ins] ++
-                           [IConst $ signToInt s1, Var $ propIdentD z x]) | (x, s1) <- outs]
+  [regularComb $ ArrayLit ([Var $ propIdentOD z y |
+                             (y, _) <- delete (x, s1) outs] ++
+                           [Var $ propIdentD y z | 
+                             (y,_) <- filter (((/=) x). fst) ins] ++
+                           [IConst $ signToInt s1, Var $ propIdentD z x]) | 
+    (x, s1) <- outs]
 
 constraint1a2 :: Node -> [(Node, Sign)] -> [(Node, Sign)] -> [Item]
-constraint1a2 z [] ins   =
-  [regularComb $ ArrayLit [IConst $ signToInt Z, IConst $ signToInt s1, Var $ propIdentOD x z]
-  | (x, s1) <- ins]
+constraint1a2 z [] ins =
+  [regularComb $ ArrayLit [ IConst $ signToInt Z
+                          , IConst $ signToInt s1
+                          , Var $ propIdentOD x z] |
+    (x, s1) <- ins]
 constraint1a2 z outs ins =
-  [regularComb $ ArrayLit ([Var $ propIdentOD z y | (y,_) <- outs] ++
-                           [IConst $ signToInt s1, Var $ propIdentOD x z]) | (x, s1) <- ins]
+  [regularComb $ ArrayLit ([Var $ propIdentOD z y | 
+                             (y,_) <- outs] ++
+                           [IConst $ signToInt s1
+                           , Var $ propIdentOD x z]) | 
+    (x, s1) <- ins]
 
 constraint1b :: Node -> [(Node, Sign)] -> [(Node, Sign)] -> [Item]
 constraint1b z outs ins = [regularPlus $ ArrayLit ([Var $ propIdentOD z x | (x,s) <- outs] ++
                                                    [Var $ propIdentD x z | (x,s) <- ins] ++
-                                                   [Var $ nodeIdent z]) ]
+                                                   [Var $ nodeIdent z])]
+                                                   
+-- Other constraints
+among :: [Node] -> Int -> Int -> [Sign] -> Item
+among ns min max vs = Constraint $
+  Bi In
+     (Call (userD "among")
+           [ArrayLit [Var $ nodeIdent n | n <- ns]
+           ,SetLit [IConst (signToInt s) | s <- vs]]) 
+     (Interval (IConst min) (IConst max))
 
 makePost :: (Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)]) -> [Item]
 makePost (z, Just _, outs, ins)  = constraint2  z outs ins
 makePost (z, Nothing, outs, ins) = constraint1a z outs ins ++ constraint1b z outs ins
 
+-- Model mode
 makeSimpleModel :: [(Node, Maybe Sign, [(Node, Sign)], [(Node, Sign)])] -> MZModel
 makeSimpleModel cld@(l:ls) = [includeRegular, Empty] ++
                        declareVars cld ++
@@ -146,7 +252,8 @@ makeSimpleModel cld@(l:ls) = [includeRegular, Empty] ++
                        concatMap makePost cld ++ [Empty, Solve Satisfy]
 
 iSolveCLD cld = iTestModel $ makeSimpleModel (getNodeContexts cld)
-solveCLD cld = do
+solveCLD cld =  testModel (makeSimpleModel (getNodeContexts cld))
+iSolveCLDwithPath cld = do
   putStrLn "Minizinc filepath:"
   p <- getLine
   testModel (makeSimpleModel (getNodeContexts cld)) p 1 10
