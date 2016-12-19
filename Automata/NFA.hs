@@ -21,7 +21,7 @@ evalNFA nfa input = any (inF nfa) (deltaStar (delta nfa) [initSt nfa] input)
 evalStep :: Delta st l -> st -> l -> [st]
 evalStep delta s c = (delta s Nothing) ++ (delta s (Just c))
 
--- |Closure under star. Compare to the proof of Theorem 1.50
+-- Closure under star.
 starNFA :: NFA st l -> NFA (Either () st) l
 starNFA nfa =
   let q0 = Left ()
@@ -34,7 +34,7 @@ starNFA nfa =
       delta1 _ _ = []
   in NFA qs1 (lang nfa) delta1 q0 inF1
 
--- |Closure under concatenation. Compare to proof of Theorem 1.47 in the textbook
+-- Closure under concatenation.
 concatNFA :: Eq l => NFA st1 l -> NFA st2 l -> NFA (Either st1 st2) l
 concatNFA nfa1 nfa2 =
   let qs = (map Left (states nfa1)) ++ (map Right (states nfa2))

@@ -1,39 +1,30 @@
 module Qualitatives where
 
-import Interfaces.MZAST
-
 data Sign = SM' | M' | MQ' | Z' | PQ' | P' | SP' | Q' 
           -- | Cond (Bool -> Sign)
-  deriving (Show, Eq, Enum)
+  deriving (Show, Eq, Enum, Bounded)
 
-type Degree = Int
-
+signDomain :: [Sign]
+signDomain = [minBound .. maxBound]
+  
 stateInt :: Sign -> Int
 stateInt = (+ 1) . fromEnum
 
-mzCond :: String -> (String, Bop, String) -> Sign -> Sign -> Item
-mzCond v (i, o, j) t f = Constraint $ ITE [(Bi o (Var i) (Var j), Bi Eq (Var v) (IConst $ stateInt t))] (Bi Eq (Var v) (IConst $ stateInt f))
+type Degree = Int
 
-condPQ :: String -> (String, Bop, String) -> Item
-condPQ v (i, o, j) = mzCond v (i, o, j) PQ' Q'
+{-
+  Encodes the two basic comparison operators used in the cases described in 'Ehancing 
+  QPNs for trade-off resolution', figure 9.
+-}
+data DegreeCond = LTE | GTE
 
-condMQ :: String -> (String, Bop, String) -> Item
-condMQ v (i, o, j) = mzCond v (i, o, j) MQ' Q'
+{-
+  1st component: the Sign returned if the degree conditional is true
+  2nd component: the Sign returned if the degree conditional is false
+-}
+type CondResult = (Sign, Sign)
 
--- Cases described in 'Ehancing QPNs for trade-off resolution', figure 9.
-caseA :: String -> String -> Item
-caseA i j = condPQ "S_A" (i, Lte, j)
-
-caseB :: String -> String -> Item
-caseB i j = condPQ "S_B" (j, Lte, i)
-
-caseC :: String -> String -> Item
-caseC i j = condMQ "S_C" (i, Lte, j)
-
-caseD :: String -> String -> Item
-caseD i j = condMQ "S_C" (j, Lte, i)
-
-type CondSign = Either (String -> String -> Item) Sign
+type CondSign = Either (DegreeCond, CondResult) Sign
 
 posPred :: Bool -> Sign
 posPred True  = PQ'
@@ -53,14 +44,14 @@ add SP' SP' = Right SP' -- (min i j)
 add SP' P'  = Right SP' --i
 add SP' PQ' = Right SP' --i
 add SP' MQ' = Right Q'
-add SP' M'  = Left caseA -- (\i j -> posPred (i <= j))
+add SP' M'  = Left (LTE, (PQ', Q')) -- (\i j -> posPred (i <= j))
 add SP' SM' = Right Q'
 add P'  SP' = Right SP' --j
 add P'  P'  = Right PQ'
 add P'  PQ' = Right PQ'
 add P'  MQ' = Right Q'
 add P'  M'  = Right Q'
-add P'  SM' = Left caseD -- (\i j -> negPred (j <= i))
+add P'  SM' = Left (GTE, (MQ', Q')) -- (\i j -> negPred (j <= i))
 add PQ' SP' = Right SP' -- j
 add PQ' P'  = Right PQ'
 add PQ' PQ' = Right PQ'
@@ -73,14 +64,14 @@ add MQ' PQ' = Right Q'
 add MQ' MQ' = Right MQ'
 add MQ' M'  = Right MQ'
 add MQ' SM' = Right SM' -- j
-add M'  SP' = Left caseB -- (\i j -> posPred (j <= i))
+add M'  SP' = Left (GTE, (PQ', Q')) -- (\i j -> posPred (j <= i))
 add M'  P'  = Right Q'
 add M'  PQ' = Right Q'
 add M'  MQ' = Right MQ'
 add M'  M'  = Right MQ'
 add M'  SM' = Right SM' -- j
 add SM' SP' = Right Q'
-add SM' P'  = Left caseC -- (\i j -> negPred (i <= j))
+add SM' P'  = Left (LTE, (MQ', Q')) -- (\i j -> negPred (i <= j))
 add SM' PQ' = Right Q'
 add SM' MQ' = Right SM' -- i
 add SM' M'  = Right SM' -- i
